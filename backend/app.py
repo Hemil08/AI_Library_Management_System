@@ -10,8 +10,9 @@ CORS(app)
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
-migrate = Migrate(app,db)
+migrate = Migrate(app, db)
 
 # Databases Models
 class Book(db.Model):
@@ -56,14 +57,14 @@ class User(db.Model):
     
 class BorrowRecord(db.Model):
     id = db.Column(db.Integer,primary_key=True)
-    book_id = db.Column(db.Integer,db.ForeignKey('book_id'),nullable=False)
-    user_id = db.Column(db.Integer,db.ForeignKey('user_id'),nullable=False)
+    book_id = db.Column(db.Integer,db.ForeignKey('book.id'),nullable=False)
+    user_id = db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
     borrow_date = db.Column(db.DateTime,default=datetime.utcnow)
     return_date = db.Column(db.DateTime)
     returned = db.Column(db.Boolean,default=False)
 
-    # book = db.relationship('Book',backref='borrow_records')
-    # user = db.relationship('User',backref='borrow_records')
+    book = db.relationship('Book',backref='borrow_records')
+    user = db.relationship('User',backref='borrow_records')
 
     def to_dict(self):
         return {
