@@ -10,11 +10,11 @@ __pycache__/
 db.sqlite3
 
 # Virtual environments
-# venv/
-env/
-.venv/
-ENV/
-backend/venv
+venv/
+# env/
+# .venv/
+# ENV/
+# backend/venv
 
 # Flask specific
 instance/
