@@ -3,9 +3,19 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
+from dotenv import load_dotenv
+import google.generativeai as genai
+import os 
+import json
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+# Access environment variables
+app.config['API_KEY'] = os.getenv("API_KEY")
+app.config['DEBUG'] = os.getenv("DEBUG", "False") == "True"
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
@@ -13,6 +23,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+# Configure Gemini AI - SECURITY WARNING: Use environment variable instead!
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY environment variable not set!")
+    print("Set it using: export GEMINI_API_KEY=your_api_key_here")
+    # Fallback to hardcoded key (NOT RECOMMENDED for production)
+
+genai.configure(api_key=GEMINI_API_KEY)
+# Updated model name - using the latest stable Gemini 2.5 Flash
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Databases Models
 class Book(db.Model):
@@ -77,6 +98,44 @@ class BorrowRecord(db.Model):
             'book':self.book.to_dict(),
             'user':self.user.to_dict()
         }
+    
+# AI Helper Functions with improved error handling
+def get_ai_book_recommendation(user_preferences,available_books):
+    """Get AI-powered book recommendations based on user preferences."""
+    try:
+        # Limit books to prevent token limit issues
+        books_subset = available_books[:20] # Only use first 20 books
+        prompt = f"""
+        Based on the user preferences: {user_preferences}
+
+        And these available books: {json.dumps([book.to_dict() for book in books_subset], default=str)}
+        
+        Recommend the top 3 books that would best match the user's preferences.
+        Consider genre,author style, themes and publication year.
+
+        Return response in JSON format:
+        {{
+        
+            "recommendations":{{
+                "book_id":int,
+                "reason":"string explaining why this book is recommended".
+                "rating: int (1-10)
+            }}
+        }}
+        """
+        response = model.generate_content(prompt)
+        # Clean up the response text to extract JSON
+        response_text = response.text.strip()
+        if response_text.startswith('```josn'):
+            response_text = response_text[7:-3]
+        elif response_text.startswith('```'):
+            response_text = response_text[3:-3]
+
+        return json.loads(response_text)
+    except json.JSONDecodeError as e:
+        return {"error": f"Failed to parse AI response : {str(e)}"}
+    except Exception as e:
+        return {"error":f"AI service error:{str}"}
     
 
 # API Routes
