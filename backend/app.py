@@ -136,7 +136,65 @@ def get_ai_book_recommendation(user_preferences,available_books):
         return {"error": f"Failed to parse AI response : {str(e)}"}
     except Exception as e:
         return {"error":f"AI service error:{str}"}
+
+def generate_book_summary(book_data):
+    """Generate an AI-powered book summary."""
+    try:
+        prompt = f"""
+        Create a comprehensive summary for this book:
+        Title:{book_data['title']}
+        Author:{book_data['author']}
+        Genre:{book_data('genre','Unknown')}
+        Description: {book_data.get('description','No description available')}
+
+        Generate a detailed summary for this book:
+        1. Main themes
+        2. Target audience
+        3. key takeways
+        4. Similar books users might enjoy
+
+        keep it engaging and informative.
+        """
+
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error generating summary:{str(e)}"
     
+def smart_search_books(query,books):
+    """Perform AI-powered smart search of books."""
+    try:
+        # Limit books to prevent token limit issues
+        books_subset = books[:30]
+
+        prompt = f"""
+        Search query:"{query}"
+
+        Available books: {json.dumps([book.to_dict() for book in books_subset],default=str)}
+
+        Find books that match the search query.Cosider:
+        - Title matches
+        - Author matches
+        - Genre matches
+        - Description/theme matches
+        - Similar concept or synonyms
+
+        Return book IDs that match, ranked by relavance(most relevant first).
+        Return as JSON :{{"books_ids":[int,int,...]}}
+        """
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        if response_text.startswith('```json'):
+            response_text = response_text[7:-3]
+        elif response_text.startswith('```'):
+            response_text = response_text[3:-3]
+
+        return json.loads(response_text)
+    except json.JSONDecodeError as e:
+        return {"books_ids":[]}
+    except Exception as e:
+        return {"books_ids":[]}
 
 # API Routes
 
