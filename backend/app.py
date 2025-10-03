@@ -198,12 +198,12 @@ def smart_search_books(query,books):
 
 # API Routes
 
-@app.route('/api/books',method=['GET'])
+@app.route('/api/books',methods=['GET'])
 def get_books():
     books = Book.query.all()
     return jsonify([book.to_dict() for book in books])
 
-@app.route('/api/books',method=['POST'])
+@app.route('/api/books',methods=['POST'])
 def add_book():
     data = request.get_json()
 
@@ -309,7 +309,7 @@ def get_recommendations():
             })
     return jsonify({'recommendations':enriched_recommendations})
     
-@app.route('/api/users',methods='POST')
+@app.route('/api/users',methods=['POST'])
 def get_users():
     users = User.query.all()
     return jsonify([user.to_dict() for user in users])
@@ -397,7 +397,7 @@ def get_stats():
         'active_borrows':active_borrows
     })
 
-@app.route('/api/health', method = ['GET'])
+@app.route('/api/health', methods = ['GET'])
 def health_check():
     """Health check endpoint to verify API and AI service status."""
     
@@ -460,5 +460,6 @@ if __name__ == '__main__':
 
             db.session.commit()
             print("Sample data added successfully!")
+            print("API endpoints available at http://127.0.0.1:5050/api/")
 
-    app.run(debug=True)
+    app.run(port=5050, debug=True)
