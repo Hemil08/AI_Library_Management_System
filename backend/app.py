@@ -208,7 +208,8 @@ def add_book():
     data = request.get_json()
 
     # Generate AI description if not provided
-    
+    if not data.get('description'):
+        data['description'] = generate_book_summary(data)
 
     book = Book(
         title=data['title'],
@@ -269,18 +270,44 @@ def search_books():
         return jsonify([book.to_dict() for book in all_books])
     
     # Use AI for smart search
-
+    ai_results = smart_search_books(query,all_books)
+    book_ids = ai_results.get('book_ids',[])
 
     # Get books in order of AI ranking
+    ordered_books = []
+    for book_id in book_ids:
+        book = Book.query.get(book_id)
+        if book:
+            ordered_books.append(book)
+
+    return jsonify([book.to_dict() for book in ordered_books])
     
 
+@app.route('/api/recommendations', methods=['POST'])
+def get_recommendations():
+    data = request.get_json()
+    preferences = data.get('preferences','')
 
-    # return jsonify([book.to_dict() for book in ordered_books
+    available_books = Book.query.filter_by(available=True).all()
+
+    if not available_books:
+        return jsonify({'recommendations':[]})
     
+    ai_recemmendations = get_ai_book_recommendation(preferences,available_books)
 
-# @app.route('/api/recommendations', methods=['POST'])
-# def get_recommendations():
-#     data = request.get_json()
+    if 'error' in ai_recemmendations:
+        return jsonify({'error':ai_recemmendations['error']}), 500
+    
+    # Enrich recommendations with book data
+    enriched_recommendations = []
+    for rec in ai_recemmendations.get('recommendations',[]):
+        book = Book.query.get(rec['book_id'])
+        if book:
+            enriched_recommendations.append({
+                **rec,
+                'book':book.to_dict()
+            })
+    return jsonify({'recommendations':enriched_recommendations})
     
 @app.route('/api/users',methods='POST')
 def get_users():
@@ -370,3 +397,68 @@ def get_stats():
         'active_borrows':active_borrows
     })
 
+@app.route('/api/health', method = ['GET'])
+def health_check():
+    """Health check endpoint to verify API and AI service status."""
+    
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+
+        # Test AI Service
+        test_response = model.generate_content("Hello, respond with 'AI service working'")
+        ai_working = "working" in test_response.text.lower()
+
+        return jsonify({
+            'status':'healthy',
+            'database':'connected',
+            'ai_service':'working' if ai_working else 'erorr',
+            'timestamp':datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status':'unhealthy',
+            'error':str(e),
+            'timestamp':datetime.utcnow().isoformat()
+        }), 500
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+
+        # Add sample data if database is empty
+        if Book.query.count() == 0:
+            sample_books = [
+                Book(title="The Great Gatsby", author="F. Scott Fitzgerald", 
+                     isbn="978-0-7432-7356-5", genre="Classic Fiction", 
+                     publication_year=1925,
+                     description="A classic American novel set in the Jazz Age, exploring themes of wealth, love, and the American Dream."),
+                Book(title="To Kill a Mockingbird", author="Harper Lee", 
+                     isbn="978-0-06-112008-4", genre="Classic Fiction", 
+                     publication_year=1960,
+                     description="A powerful story of racial injustice and childhood innocence in the American South."),
+                Book(title="1984", author="George Orwell", 
+                     isbn="978-0-452-28423-4", genre="Dystopian Fiction", 
+                     publication_year=1949,
+                     description="A dystopian social science fiction novel about totalitarianism and surveillance."),
+                Book(title="Pride and Prejudice", author="Jane Austen", 
+                     isbn="978-0-14-143951-8", genre="Romance", 
+                     publication_year=1813,
+                     description="A romantic novel that critiques the British landed gentry at the end of the 18th century."),
+                Book(title="The Catcher in the Rye", author="J.D. Salinger", 
+                     isbn="978-0-316-76948-0", genre="Coming-of-age Fiction", 
+                     publication_year=1951,
+                     description="A controversial novel about teenage rebellion and alienation in post-war America."),
+            ]
+
+            for book in sample_books:
+                db.session.add(book)
+
+            # Add sample User
+            sample_user = User(name="John Doe", email="john.doe@example.com")
+            db.session.add(sample_user)
+
+            db.session.commit()
+            print("Sample data added successfully!")
+
+    app.run(debug=True)
