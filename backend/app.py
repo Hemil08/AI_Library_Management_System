@@ -39,7 +39,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 class Book(db.Model):
     id = db.Column(db.Integer,primary_key=True)
     title = db.Column(db.String(200),nullable=False)
-    author = db.Column(db.String(20),unique=True,nullable=False)
+    author = db.Column(db.String(50),nullable=False)
     isbn = db.Column(db.String(20),unique=True,nullable=False)
     genre = db.Column(db.String(100))
     publication_year = db.Column(db.Integer)
@@ -144,7 +144,7 @@ def generate_book_summary(book_data):
         Create a comprehensive summary for this book:
         Title:{book_data['title']}
         Author:{book_data['author']}
-        Genre:{book_data('genre','Unknown')}
+        Genre:{book_data.get('genre','Unknown')}
         Description: {book_data.get('description','No description available')}
 
         Generate a detailed summary for this book:
