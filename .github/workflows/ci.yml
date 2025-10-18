@@ -21,6 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          cd backend
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
@@ -28,6 +29,6 @@ jobs:
 
       - name: Run tests
         run: |
-          source venv/bin/activate
           cd backend
+          source venv/bin/activate
           pytest --maxfail=1 --disable-warnings -q
